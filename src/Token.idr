@@ -8,6 +8,7 @@ data TokenType = Number
                | RightPar
                | Plus
                | Minus
+               | Fn
                | Let
                | Def
                | Mul
@@ -18,6 +19,12 @@ data TokenType = Number
                | Comma
                | QuestionMark
                | Colon
+               | True
+               | False
+               | Return
+               | Equal
+               | If
+               | Else
 
 public export
 
@@ -38,8 +45,16 @@ Eq TokenType where
   Comma == Comma = True
   QuestionMark == QuestionMark = True
   Colon == Colon = True
+  True == True = True
+  False == False = True
+  Fn == Fn = True
+  Return == Return = True
+  Equal == Equal = True
+  If == If = True
+  Else == Else = True
   a == b = False
-           
+
+  
 public export
 
 Show TokenType where
@@ -59,3 +74,11 @@ Show TokenType where
     show Comma = "Comma"
     show QuestionMark = "QuestionMark"
     show Colon = "Colon"
+    show True = "True"
+    show False = "False"
+    show Fn = "Fn"
+    show Return = "Return"
+    show Equal = "Equal"
+    show If = "If"
+    show Else = "Else"
+    

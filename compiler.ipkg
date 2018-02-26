@@ -1,7 +1,10 @@
 package compiler
 
 tests = Test.Parser.runTests
+      , Test.Parser.stmtTests
+      , Test.Parser.funDefTests
 modules = Token, Tokenizer, Test.Parser, Parser, Syntax
 sourcedir = src
 executable = bin
 main = Main
+pkgs = contrib

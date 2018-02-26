@@ -1,5 +1,10 @@
 .PHONY: watch build test
 
+watch-test:
+	(find src -name '*.idr'; echo Makefile) \
+	| grep -v '#' \
+	| entr -r make test
+
 watch:
 	(find src -name '*.idr'; echo Makefile) \
 	| grep -v '#' \
@@ -11,7 +16,7 @@ check:
 
 build:
 	idris --build compiler.ipkg
-	./compiler
+	./bin
 
 test:
 	idris --testpkg compiler.ipkg

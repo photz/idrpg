@@ -32,6 +32,8 @@ mutual
                               , ( Token.Identifier, parsePrefixIdent )
                               , ( Token.LeftPar, parsePrefixGroup )
                               , ( Token.Number, parsePrefixNumber )
+                              , ( Token.True, parsePrefixBool )
+                              , ( Token.False, parsePrefixBool )
                               ]
 
               infixParsers
@@ -40,6 +42,7 @@ mutual
                              , ( Token.QuestionMark, parseInfixCond )
                              , ( Token.Mul, parseInfixMul )
                              , ( Token.LeftPar, parseInfixFunCall )
+                             , ( Token.Equal, parseInfixEqual )
                              ]
 
               parseInfix
@@ -59,6 +62,14 @@ mutual
               parseInfix lExpr Nil = Right (lExpr, Nil)
                               
 
+  parsePrefixBool : List (TokenType, String)
+                  -> Either String (Expr, List (TokenType, String))
+  parsePrefixBool ((Token.True, _)::xs) =
+    Right (BoolLiteral True, xs)
+  parsePrefixBool ((Token.False, _)::xs) =
+    Right (BoolLiteral False, xs)
+  parsePrefixBool ((x, _)::_) =
+    Left ("expecting either true or false, got " ++ (show x))
 
   parsePrefixIdent : List (TokenType, String)
                    -> Either String (Expr, List (TokenType, String))
@@ -120,6 +131,14 @@ mutual
 
   parseInfixCond a b = Left "expected a question mark"
 
+  parseInfixEqual : Expr
+                  -> List (TokenType, String)
+                  -> Either String (Expr, List (TokenType, String))
+  parseInfixEqual lExpr ((Equal, _)::xs) = do
+    (rExpr, rest) <- parseExpr xs
+    pure (BinOp lExpr Equal rExpr, rest)
+  
+
   parseArgList
     : List (TokenType, String)
     -> Either String (List Expr, List (TokenType, String))
@@ -149,3 +168,109 @@ mutual
     pure (FunCall id args, rest)
     
   parseInfixFunCall _ _ = Left "invalid function call"
+
+
+  public export
+  
+  parseStmt : List (TokenType, String)
+            -> Either String (Stmt, List (TokenType, String))
+  parseStmt ((Let, _)::(Identifier, id)::(Assign, _)::xs) = do
+    (expr, (Semi, _)::afterSemi) <- parseExpr xs
+      | _ => Left "expected a semicolon at the end of statement"
+    pure (VarDecl id expr, afterSemi)
+
+  parseStmt ((Identifier, id)::(Assign, _)::xs) = do
+    (expr, (Semi, _)::afterSemi) <- parseExpr xs
+      | _ => Left "expected a semicolon at the end of statement"
+    pure (Assignment id expr, afterSemi)
+
+  parseStmt ((Return, _)::xs) = do
+    (expr, (Semi, _)::afterSemi) <- parseExpr xs
+      | Left "expected a semicolon after statement"
+    pure (Return expr, afterSemi)
+
+  parseStmt xs@((Identifier, id)::_) = do
+    (expr, (Semi, _)::afterSemi) <- parseExpr xs
+      | Left "expected a semicolon after statement"
+    pure (ExprStmt expr, afterSemi)
+
+  parseStmt ((If, _)::xs) = do
+    (cond, (LeftBrace, _)::xs) <- parseExpr xs
+      | _ => Left "expecting { after condition in head of if statement"
+    (stmts, (RightBrace, _)::xs) <- parseStmtList xs
+      | (_, (_, lemma)::_) => 
+        Left ("expecting a } after statement list in body of if, got " ++ lemma)
+  
+    case xs of
+      (Else, _)::(LeftBrace, _)::rest => do
+        (elseStmts, (RightBrace, _)::afterStmts) <- parseStmtList rest
+          | _ => Left "expected }"
+        Right (IfStmt cond stmts elseStmts, afterStmts)
+      _ =>
+        Right (IfStmt cond stmts [], xs)
+
+  
+
+
+  parseStmt ((_, lemma)::_) =
+    Left "invalid statement"
+
+  public export
+
+  parseStmtList : List (TokenType, String)
+                -> Either String (List Stmt, List (TokenType, String))
+  parseStmtList xs = parseList xs Nil
+    where
+      inFirst : TokenType -> Bool
+      inFirst Identifier = True
+      inFirst Let = True
+      inFirst Return = True
+      inFirst If = True
+      inFirst _ = False
+
+      parseList : List (TokenType, String)
+                -> List Stmt
+                -> Either String (List Stmt, List (TokenType, String))
+      parseList Nil ys = Right (reverse ys, Nil)
+      parseList ((x, xlemma)::xs) ys with (inFirst x) 
+        | True = do
+          (stmt, rest) <- parseStmt ((x, xlemma)::xs)
+          parseList rest (stmt::ys)
+
+        | False = Right (reverse ys, ((x, xlemma)::xs))
+
+
+
+public export
+
+parseParamList : List (TokenType, String)
+               -> Either String (List String, List (TokenType, String))
+parseParamList xs@((RightPar, _)::_) = Right ([], xs)
+parseParamList ((Identifier, firstParam)::xs) = do
+               (otherParams, afterParams) <- parseList xs Nil
+               pure (firstParam::otherParams, afterParams)
+  where
+    parseList : List (TokenType, String)
+              -> List String
+              -> Either String (List String, List (TokenType, String))
+    parseList ((Comma, _)::(Identifier, id)::xs) params =
+      parseList xs (id::params)
+
+    parseList xs params =
+      Right (params, xs)
+
+
+
+
+public export
+
+parseFunDef : List (TokenType, String)
+            -> Either String (FunDef, List (TokenType, String))
+parseFunDef ((Fn, _)::(Identifier, id)::(LeftPar, _)::xs) = do
+  (params, (RightPar, _)::(LeftBrace, _)::rest) <- parseParamList xs
+    | _ => Left "error while parsing head of function definition"
+  (stmts, (RightBrace, _)::afterFunDef) <- parseStmtList rest
+    | _ => Left "expected }"
+  pure (MkFunDef id params stmts, afterFunDef)
+
+parseFunDef _ = Left "invalid function definition"

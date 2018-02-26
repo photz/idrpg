@@ -5,7 +5,13 @@ import Token
 
 keywords : String -> Maybe Token.TokenType
 keywords "def" = Just Def
+keywords "else" = Just Else
+keywords "false" = Just False
+keywords "fn" = Just Fn
+keywords "if" = Just If
 keywords "let" = Just Let
+keywords "return" = Just Return
+keywords "true" = Just True
 keywords _ = Nothing
 
 myTakeWhile : (Char -> Bool) -> List Char -> (String, List Char)
@@ -42,6 +48,7 @@ tokens x = f (unpack x)
     f ('{'::xs) = (LeftBrace, "{")::f xs
     f ('}'::xs) = (RightBrace, "}")::f xs
     f (';'::xs) = (Semi, ";")::f xs
+    f ('='::'='::xs) = (Equal, "==")::f xs
     f ('='::xs) = (Assign, "=")::f xs
     f (','::xs) = (Comma, ",")::f xs
     f (':'::xs) = (Colon, ":")::f xs

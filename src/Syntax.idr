@@ -1,35 +1,38 @@
 module Syntax
 
-public export
-data Op = Plus | Minus | Mul
+%access public export
 
-public export
+
+data Op = Plus | Minus | Mul | Equal
+
+
 Eq Op where
   Plus == Plus = True
   Minus == Minus = True
   Mul == Mul = True
+  Equal == Equal = True
   _ == _ = False
 
-public export
+
 Show Op where
   show Plus = "Plus"
   show Minus = "Minus"
   show Mul = "Mul"
+  show Equal = "Equal"
 
-public export
 data Expr = UnaryPlus Expr
           | UnaryMinus Expr
           | UnaryNot Expr
-          | IntLiteral Int
           | Identifier String
+          | IntLiteral Int
+          | BoolLiteral Bool
           | BinOp Expr Op Expr
           | CondExpr Expr Expr Expr
           | FunCall String (List Expr)
 
-
-public export
 Show Expr where
   show (IntLiteral n) = "IntLiteral " ++ (show n)
+  show (BoolLiteral val) = "BoolLiteral " ++ (show val)
   show (Identifier id) = "Identifier " ++ id
   show (UnaryPlus e) = "UnaryPlus " ++ (show e)
   show (UnaryMinus e) = "UnaryMinus " ++ (show e)
@@ -41,7 +44,7 @@ Show Expr where
   show (FunCall id exprs) =
     "FunCall " ++ id ++ " " ++ (show exprs)
 
-public export
+
 Eq Expr where
   (UnaryPlus l) == (UnaryPlus r) = l == r
   (UnaryMinus l) == (UnaryMinus r) = l == r
@@ -54,4 +57,33 @@ Eq Expr where
     id1 == id2 -- TODO
   (CondExpr cond1 if1 else1) == (CondExpr cond2 if2 else2) =
     cond1 == cond2 && if1 == if2 && else1 == else2
+  (BoolLiteral l) == (BoolLiteral r) = l == r
   a == b = False
+  
+
+data Stmt = VarDecl String Expr
+          | Assignment String Expr
+          | Return Expr
+          | ExprStmt Expr
+          | IfStmt Expr (List Stmt) (List Stmt)
+
+Eq Stmt where
+  (VarDecl id1 expr1) == (VarDecl id2 expr2) =
+    id1 == id2 && expr1 == expr2
+  (Assignment id1 expr1) == (Assignment id2 expr2) =
+    id1 == id2 && expr1 == expr2
+  (Return l) == (Return r) = l == r
+  (ExprStmt l) == (ExprStmt r) = l == r
+  (IfStmt expr1 if1 else1) == (IfStmt expr2 if2 else2) = True
+  _ == _ = False
+  
+
+data FunDef = MkFunDef String (List String) (List Stmt)
+
+Eq FunDef where
+  (MkFunDef id1 params1 stmts1) == (MkFunDef id2 params2 stmts2) =
+    id1 == id2 && params1 == params2 && stmts1 == stmts2
+
+Show FunDef where
+  show (MkFunDef id params stmts) =
+    "FunDef " ++ (show params) --++ " " ++ (show stmts)
